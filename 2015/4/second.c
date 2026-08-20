@@ -6,7 +6,7 @@
 #include <string.h>
 
 #define OPENSSL_API_COMPAT
-char secret[] = "pqrstuv";
+char secret[] = "yzbqklnj";
 char secretAppended[100];
 
 int main() {
@@ -27,7 +27,7 @@ int main() {
             number++;
             continue;
         }
-        if (digest[2] >> 4 != 0) {
+        if (digest[2] != 0) {
             number++;
             continue;
         }
