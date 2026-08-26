@@ -1,0 +1,149 @@
+#include <math.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+char input[] = "./input.txt";
+struct city {
+    uint32_t id; // lets assume the first 4 letters are unique in each city
+    bool visited;
+};
+struct connection {
+    struct city *start;
+    struct city *end;
+    uint16_t distance;
+};
+
+int main() {
+    FILE *fptr = fopen(input, "r");
+
+    if (fptr == NULL) {
+        printf("Failed to open file\n");
+    }
+
+    char buffer[256];
+    // lets assume all cities connect, so connections = lines
+    uint32_t lines = 0;
+    while (fgets(buffer, 256, fptr) != NULL) {
+        lines++;
+    }
+    uint32_t connectionCount = lines;
+    struct connection connections[connectionCount];
+    uint16_t cityCount = (1 + sqrtf(1 + 8 * lines)) / 2;
+    struct city cities[8] = {0};
+    printf("lines %d\n", lines);
+    printf("cities %d\n", cityCount);
+
+    rewind(fptr);
+    lines = 0;
+    while (fgets(buffer, 256, fptr) != NULL) {
+        // start by looking at the first city
+        struct city *first;
+        uint32_t id;
+        memcpy(&id, buffer, sizeof(uint32_t));
+        for (int c = 0; c < cityCount; c++) {
+            if (cities[c].id == 0) {
+                cities[c].id = id;
+                first = &cities[c];
+                break;
+            }
+            if (cities[c].id == id) {
+                first = &cities[c];
+                break;
+            }
+        }
+        // Now we look for the second city by looking for a space;
+        int i = 0;
+        struct city *second;
+        while (buffer[i] != '\n') {
+            if (buffer[i] == ' ') {
+                i += 4;
+                memcpy(&id, &buffer[i], sizeof(uint32_t));
+                for (int c = 0; c < cityCount; c++) {
+                    if (cities[c].id == 0) {
+                        cities[c].id = id;
+                        second = &cities[c];
+                        break;
+                    }
+                    if (cities[c].id == id) {
+                        second = &cities[c];
+                        break;
+                    }
+                }
+                break;
+            }
+            i++;
+        }
+        // now we look for the distance by searching for the =
+        uint32_t length;
+        while (buffer[i] != '\n') {
+            if (buffer[i] == '=') {
+                i += 2;
+                length = atoi(&buffer[i]);
+                break;
+            }
+            i++;
+        }
+        struct connection temp = {.start = first, .end = second, .distance = length};
+        connections[lines] = temp;
+        lines++;
+        printf("%d\n", length);
+    }
+    printf("## Cities ##\n");
+    for (int i = 0; i < cityCount; i++) {
+        printf("city %.4s\n", (char *)&cities[i].id);
+    }
+
+    printf("## CONNECTIONS ##\n");
+    for (int i = 0; i < connectionCount; i++) {
+        printf("%d, %.4s, %d, %.4s\n", i, (char *)&connections[i].start->id, connections[i].distance, (char *)&connections[i].end->id);
+    }
+
+    // Lets start by keeping track of the cities we have visited
+    printf("break\n");
+    struct city *visitedCities[cityCount];
+    uint32_t offsets[cityCount];
+    for (int i = 0; i < cityCount; i++) {
+        for (int k = 0; k < cityCount; k++) {
+            cities[k].visited = false;
+            offsets[k] = 1;
+        }
+        visitedCities[0] = &cities[i];
+        cities[i].visited = true;
+        printf("###Starting city = %.4s\n", (char *)&cities[i].id);
+        int16_t depth = 1;
+        while (depth != 0) {
+            bool found_new_city = true;
+            while (found_new_city) {
+                found_new_city = false;
+                while (offsets[depth] < cityCount) {                    // now we loop through all cities checking if they are not visited.
+                    if (cities[offsets[depth]].visited == false) {      // if the city we find isnt visited
+                        cities[offsets[depth]].visited = true;          // set the city to visited
+                        visitedCities[depth] = &cities[offsets[depth]]; // set the city in our visited list
+                        found_new_city = true;
+                        printf("true city = %.4s\n", (char *)&cities[offsets[depth]].id);
+                        offsets[depth] += 1;
+                        depth += 1;
+                        break;
+                    }
+                    offsets[depth] += 1;
+                }
+            }
+            printf("No new cities to explore\n");
+            if (depth >= 0 && depth < cityCount) {
+                offsets[depth] = 1; // resets our offset so we can scan again later.
+            }
+            printf("D=%d, OD=%d\n", depth, offsets[depth]);
+            for (int j = 0; j < cityCount; j++) {
+                printf(" %.4s, %d :", (char *)&visitedCities[j]->id, visitedCities[j]->visited);
+            }
+            for (int j = depth - 1; j < cityCount; j++) {
+                visitedCities[j]->visited = false;
+            }
+            depth += -2; // goes a step back.
+            printf("\n");
+        }
+    }
+}
